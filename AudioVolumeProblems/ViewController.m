@@ -27,8 +27,6 @@
 {
     [super viewDidLoad];
     
-    [self _setup];
-    
     [self _playAudio:nil];
     
     _playTimer = [NSTimer scheduledTimerWithTimeInterval:10.0
@@ -49,20 +47,36 @@
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-- (void)_setup
-{
+- (void)_setActive {
     UInt32 mix  = 1;
     UInt32 duck = 1;
     NSError* errRet;
     
     AVAudioSession* session = [AVAudioSession sharedInstance];
+    [session setActive:NO error:&errRet];
     
     [session setCategory:AVAudioSessionCategoryPlayback error:&errRet];
     NSAssert(errRet == nil, @"setCategory!");
     
     AudioSessionSetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, sizeof(mix), &mix);
-    
     AudioSessionSetProperty(kAudioSessionProperty_OtherMixableAudioShouldDuck, sizeof(duck), &duck);
+    
+    [session setActive:YES error:&errRet];
+}
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+- (void)_setIdle {
+    NSError* errRet;
+    
+    AVAudioSession* session = [AVAudioSession sharedInstance];
+    [session setActive:NO error:&errRet];
+    
+    [session setCategory:AVAudioSessionCategoryAmbient error:&errRet];
+    NSAssert(errRet == nil, @"setCategory!");
+    
+    [session setActive:YES error:&errRet];
 }
 
 
@@ -70,6 +84,8 @@
 // ----------------------------------------------------------------------------
 - (void)_playAudio:(NSTimer*)timer
 {
+    [self _setActive];
+    
     NSString* audioClip;
     if (_playYeeeaaah) {
         audioClip = @"umyeah1";
@@ -81,13 +97,8 @@
     NSString *filename = [[NSBundle mainBundle] pathForResource:audioClip
                                                          ofType:@"wav"];
     NSData* audioData = [NSData dataWithContentsOfFile:filename];
-    
-    AVAudioSession* session = [AVAudioSession sharedInstance];
 
     NSError* errRet;
-    [session setActive:YES error:&errRet];
-    NSAssert(errRet == nil, @"setActive=YES");
-    
     _player = [[AVAudioPlayer alloc] initWithData:audioData error:&errRet];
     NSAssert(errRet == nil, @"initWithData!");
     
@@ -105,10 +116,7 @@
 - (void)audioPlayerDidFinishPlaying:(AVAudioPlayer*)player
                        successfully:(BOOL)flag
 {
-    AVAudioSession* session = [AVAudioSession sharedInstance];
-    
-    NSError* errRet;
-    [session setActive:NO error:&errRet];
+    [self _setIdle];
     
     [_textView setText:@"When the audio isn't playing, the volume buttons control the ringer.\n\nNo good!"];
 }
